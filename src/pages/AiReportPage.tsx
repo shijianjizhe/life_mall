@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AppShell, TopBar } from '../components/layout/AppShell'
+import { ProductVisual } from '../components/product/ProductCard'
 import { Button } from '../components/ui/Button'
 import { PageSpinner } from '../components/ui/EmptyState'
 import { db } from '../db'
@@ -78,14 +79,23 @@ export function AiReportPage() {
         if (latest) {
           setReport(latest)
         } else {
-          await generate()
+          const next = buildPersonalityReport(stats)
+          const id = await db.aiReports.add({
+            ...next,
+            createdAt: new Date().toISOString(),
+          })
+          const saved = await db.aiReports.get(id as number)
+          if (mounted) {
+            setReport(saved ?? null)
+            toast('购物人格报告已生成')
+          }
         }
         if (mounted) setLoading(false)
       })
     return () => {
       mounted = false
     }
-  }, [])
+  }, [stats, toast])
 
   if (loading) {
     return (
@@ -98,58 +108,67 @@ export function AiReportPage() {
 
   return (
     <AppShell showNav={false}>
-      <div className="brand-gradient text-white">
-        <TopBar title="购物人格报告" showBack />
-        <div className="px-4 pb-8 pt-5 text-center">
-          <div className="text-5xl">🧬</div>
-          <p className="mt-3 text-sm text-white/80">你的购物人格报告</p>
-          <h1 className="mt-2 text-2xl font-bold leading-snug">
-            {report?.title ?? '精神消费艺术家'}
-          </h1>
-        </div>
-      </div>
+      <TopBar title="购物人格报告" showBack />
+      <div className="snap-y snap-mandatory space-y-4 px-4 py-4">
+        <section className="flex min-h-[72vh] snap-start flex-col justify-center overflow-hidden rounded-2xl brand-gradient p-5 text-center text-white shadow-sm">
+          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-white/18 text-5xl backdrop-blur">
+            🧬
+          </div>
+          <p className="mt-5 text-sm text-white/80">你的购物人格报告</p>
+          <h1 className="mt-2 text-3xl font-bold leading-tight">正在分析购物车灵魂</h1>
+          <div className="mx-auto mt-6 h-2 w-44 overflow-hidden rounded-full bg-white/20">
+            <div className="h-full w-4/5 animate-pulse rounded-full bg-white" />
+          </div>
+          <p className="mt-4 text-xs text-white/75">虚拟数据，本地生成，不上传服务器</p>
+        </section>
 
-      <div className="space-y-4 px-4 py-4">
-        <div className="snap-y snap-mandatory space-y-4">
-        <section className="flex min-h-[58vh] snap-start flex-col justify-center rounded-2xl border border-line bg-white p-4 shadow-sm">
-          <h2 className="font-semibold">数据切片</h2>
-          <div className="mt-3 grid grid-cols-2 gap-2 text-center text-xs">
+        <section className="flex min-h-[72vh] snap-start flex-col justify-center rounded-2xl border border-line bg-white p-5 text-center shadow-sm">
+          <ProductVisual emoji="🛍️" className="mx-auto h-28 w-28 rounded-3xl text-6xl shadow-sm ring-1 ring-line" />
+          <p className="mt-5 text-sm text-muted">人格标题揭晓</p>
+          <h2 className="mt-2 text-2xl font-bold leading-tight text-ink">
+            {report?.title ?? '精神消费艺术家'}
+          </h2>
+          {report?.createdAt ? (
+            <p className="mt-4 text-xs text-muted">
+              生成时间：{formatDateTime(report.createdAt)}
+            </p>
+          ) : null}
+        </section>
+
+        <section className="flex min-h-[72vh] snap-start flex-col justify-center rounded-2xl border border-line bg-white p-5 shadow-sm">
+          <h2 className="text-lg font-bold text-ink">数据支撑</h2>
+          <p className="mt-1 text-sm text-muted">这些本地行为暴露了你的一点点想要</p>
+          <div className="mt-5 grid grid-cols-2 gap-3 text-center text-xs">
             {[
               ['偏爱分区', stats.topCategoryName],
               ['假下单', `${stats.totalOrders} 次`],
               ['虚拟消费', formatPrice(stats.totalSpent)],
               ['购物车常驻', `${stats.cartCount} 件`],
               ['收藏心动', `${stats.favoriteCount} 件`],
+              ['报告来源', '本地 IndexedDB'],
             ].map(([label, value]) => (
-              <div key={label} className="rounded-xl bg-bg px-2 py-3">
-                <div className="font-bold text-brand-pink">{value}</div>
+              <div key={label} className="rounded-2xl bg-bg px-2 py-4">
+                <div className="break-words text-base font-bold text-brand-pink">{value}</div>
                 <div className="mt-1 text-muted">{label}</div>
               </div>
             ))}
           </div>
         </section>
 
-        <section className="flex min-h-[58vh] snap-start flex-col justify-center rounded-2xl border border-line bg-white p-4 shadow-sm">
-          <h2 className="font-semibold">人格解读</h2>
-          <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-ink/90">
+        <section className="flex min-h-[72vh] snap-start flex-col justify-center rounded-2xl border border-line bg-white p-5 shadow-sm">
+          <h2 className="text-lg font-bold text-ink">人格点评</h2>
+          <p className="mt-4 whitespace-pre-line text-sm leading-relaxed text-ink/90">
             {report?.content}
           </p>
-          {report?.createdAt ? (
-            <p className="mt-3 text-xs text-muted">
-              生成时间：{formatDateTime(report.createdAt)}
-            </p>
-          ) : null}
+          <div className="mt-6 grid grid-cols-2 gap-2">
+            <Link to="/share/poster?from=report">
+              <Button fullWidth>生成分享图</Button>
+            </Link>
+            <Button variant="secondary" fullWidth onClick={() => void generate()}>
+              重新测一次
+            </Button>
+          </div>
         </section>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2 pb-4">
-          <Link to="/share/poster?from=report">
-            <Button fullWidth>生成分享图</Button>
-          </Link>
-          <Button variant="secondary" fullWidth onClick={() => void generate()}>
-            重新测一次
-          </Button>
-        </div>
       </div>
     </AppShell>
   )

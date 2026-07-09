@@ -1,13 +1,14 @@
 import { useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { AppShell, TopBar } from '../components/layout/AppShell'
-import { ProductEmojiArt } from '../components/product/ProductCard'
+import { ProductVisual } from '../components/product/ProductCard'
 import { Button } from '../components/ui/Button'
 import { EmptyState } from '../components/ui/EmptyState'
 import { FAKE_REVIEWS } from '../data/copyPool'
 import { db } from '../db'
 import { CATEGORY_MAP } from '../lib/constants'
 import { cn, formatPrice } from '../lib/format'
+import { safeVibrate } from '../lib/haptics'
 import { useAppStore } from '../stores/useAppStore'
 
 type Visual =
@@ -22,6 +23,8 @@ export function ProductDetailPage() {
   const navigate = useNavigate()
   const product = useAppStore((s) => s.getProduct(productId ?? ''))
   const addToCart = useAppStore((s) => s.addToCart)
+  const triggerCartFly = useAppStore((s) => s.triggerCartFly)
+  const cartCount = useAppStore((s) => s.cartCount())
   const toggleFavorite = useAppStore((s) => s.toggleFavorite)
   const refreshWishlist = useAppStore((s) => s.refreshWishlist)
   const toast = useAppStore((s) => s.toast)
@@ -29,6 +32,7 @@ export function ProductDetailPage() {
   const [slide, setSlide] = useState(0)
   const [descExpanded, setDescExpanded] = useState(false)
   const visualTouchStartX = useRef<number | null>(null)
+  const visualRef = useRef<HTMLDivElement | null>(null)
 
   const reviews = useMemo(() => {
     if (!product) return []
@@ -74,7 +78,25 @@ export function ProductDetailPage() {
     )
   }
 
+  const animateAdd = () => {
+    const rect = visualRef.current?.getBoundingClientRect()
+    if (rect) {
+      triggerCartFly({
+        from: rect,
+        imageUrl: product.mainImageUrl,
+        emoji: product.emoji,
+      })
+    }
+    safeVibrate(10)
+  }
+
+  const addProductToCart = async () => {
+    animateAdd()
+    await addToCart(product.id, 1)
+  }
+
   const buyNow = async () => {
+    animateAdd()
     await addToCart(product.id, 1)
     navigate(`/checkout?productId=${product.id}`)
   }
@@ -97,7 +119,24 @@ export function ProductDetailPage() {
 
   return (
     <AppShell showNav={false}>
-      <TopBar title="商品详情" showBack />
+      <TopBar
+        title="商品详情"
+        showBack
+        right={
+          <Link
+            to="/cart"
+            data-cart-target="top"
+            className="relative flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-ink shadow-sm ring-1 ring-line"
+          >
+            🛒
+            {cartCount > 0 ? (
+              <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-danger px-1 text-center text-[10px] font-bold leading-4 text-white animate-breathe">
+                {cartCount > 99 ? '99+' : cartCount}
+              </span>
+            ) : null}
+          </Link>
+        }
+      />
       <div
         className={cn('relative bg-gradient-to-br p-6', cat?.theme ?? 'from-brand-pink to-brand-purple')}
         onTouchStart={(event) => {
@@ -105,19 +144,13 @@ export function ProductDetailPage() {
         }}
         onTouchEnd={(event) => handleVisualTouchEnd(event.changedTouches[0]?.clientX ?? 0)}
       >
-        <div className="mx-auto max-w-xs">
-          {activeVisual?.type === 'image' ? (
-            <img
-              src={activeVisual.value}
-              alt={product.name}
-              className="h-48 w-full rounded-3xl bg-white object-cover shadow-lg"
-            />
-          ) : (
-            <ProductEmojiArt
-              emoji={activeVisual?.value ?? product.emoji}
-              className="h-48 w-full rounded-3xl text-7xl shadow-lg"
-            />
-          )}
+        <div ref={visualRef} className="mx-auto max-w-xs">
+          <ProductVisual
+            product={product}
+            imageUrl={activeVisual?.type === 'image' ? activeVisual.value : null}
+            emoji={activeVisual?.type === 'emoji' ? activeVisual.value : product.emoji}
+            className="h-48 w-full rounded-3xl text-7xl shadow-lg"
+          />
         </div>
         {visuals.length > 1 ? (
           <>
@@ -244,7 +277,7 @@ export function ProductDetailPage() {
           <Button
             variant="outline"
             className="flex-1"
-            onClick={() => void addToCart(product.id)}
+            onClick={() => void addProductToCart()}
           >
             加入购物车
           </Button>

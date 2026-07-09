@@ -5,7 +5,7 @@ import {
   DisclaimerBanner,
   TopBar,
 } from '../components/layout/AppShell'
-import { ProductEmojiArt } from '../components/product/ProductCard'
+import { ProductVisual } from '../components/product/ProductCard'
 import { CATEGORIES, CATEGORY_MAP } from '../lib/constants'
 import { formatPrice, todayYmd } from '../lib/format'
 import { useAppStore } from '../stores/useAppStore'
@@ -131,7 +131,7 @@ export function HomePage() {
                 to={`/product/${p.id}`}
                 className="w-36 shrink-0 overflow-hidden rounded-2xl border border-line bg-white shadow-sm"
               >
-                <ProductEmojiArt emoji={p.emoji} className="h-24 text-4xl" />
+                <ProductVisual product={p} className="h-24 text-4xl" />
                 <div className="p-2">
                   <div className="line-clamp-1 text-xs font-semibold">{p.name}</div>
                   <div className="text-sm font-bold text-brand-pink">

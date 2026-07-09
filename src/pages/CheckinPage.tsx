@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AppShell, TopBar } from '../components/layout/AppShell'
+import { AnimatedNumber } from '../components/ui/AnimatedNumber'
 import { Button } from '../components/ui/Button'
 import { db } from '../db'
 import { cn, todayYmd } from '../lib/format'
+import { safeVibrate } from '../lib/haptics'
 import { useAppStore } from '../stores/useAppStore'
 import type { Checkin } from '../types'
 
@@ -37,6 +39,7 @@ export function CheckinPage() {
   const [checkins, setCheckins] = useState<Checkin[]>([])
   const [busy, setBusy] = useState(false)
   const [celebrate, setCelebrate] = useState(false)
+  const [displayCoin, setDisplayCoin] = useState(profile?.happyCoin ?? 0)
 
   const today = todayYmd()
   const now = useMemo(() => new Date(), [])
@@ -63,6 +66,10 @@ export function CheckinPage() {
     void load()
   }, [])
 
+  useEffect(() => {
+    setDisplayCoin(profile?.happyCoin ?? 0)
+  }, [profile?.happyCoin])
+
   const signIn = async () => {
     if (busy) return
     setBusy(true)
@@ -79,6 +86,7 @@ export function CheckinPage() {
 
       const streakDays = last && diffDays(today, last.checkinDate) === 1 ? last.streakDays + 1 : 1
       const rewardCoin = streakDays % 7 === 0 ? 30 : 10
+      setDisplayCoin(profile?.happyCoin ?? 0)
 
       await db.transaction('rw', [db.checkins, db.userProfile], async () => {
         await db.checkins.add({
@@ -97,6 +105,7 @@ export function CheckinPage() {
 
       await Promise.all([load(), refreshProfile()])
       toast(`签到成功，快乐币 +${rewardCoin}`)
+      safeVibrate([10, 24, 10])
       setCelebrate(true)
       window.setTimeout(() => setCelebrate(false), 1400)
     } finally {
@@ -129,7 +138,7 @@ export function CheckinPage() {
           <div className="text-sm text-white/85">连续签到</div>
           <div className="mt-1 text-4xl font-bold">{currentStreak} 天</div>
           <div className="mt-2 inline-flex rounded-full bg-white/20 px-3 py-1 text-sm">
-            快乐币 {profile?.happyCoin ?? 0}
+            快乐币 <AnimatedNumber value={displayCoin} className="ml-1 font-semibold" />
           </div>
         </div>
       </div>

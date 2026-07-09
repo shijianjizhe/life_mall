@@ -17,6 +17,13 @@ interface ToastItem {
   message: string
 }
 
+export interface CartFlyRequest {
+  id: number
+  imageUrl?: string
+  emoji: string
+  from: DOMRectReadOnly
+}
+
 interface AppState {
   ready: boolean
   products: Product[]
@@ -27,6 +34,7 @@ interface AppState {
   profile: UserProfile | null
   aiMode: AiAdvancedMode
   toasts: ToastItem[]
+  cartFly: CartFlyRequest | null
   hydrate: () => Promise<void>
   refreshCart: () => Promise<void>
   refreshFavorites: () => Promise<void>
@@ -36,6 +44,8 @@ interface AppState {
   refreshAiMode: () => Promise<void>
   toast: (message: string) => void
   dismissToast: (id: number) => void
+  triggerCartFly: (request: Omit<CartFlyRequest, 'id'>) => void
+  clearCartFly: (id: number) => void
   getProduct: (id: string) => Product | undefined
   cartCount: () => number
   cartTotalSelected: () => number
@@ -59,6 +69,7 @@ interface AppState {
 }
 
 let toastSeq = 1
+let cartFlySeq = 1
 
 export const useAppStore = create<AppState>((set, get) => ({
   ready: false,
@@ -70,6 +81,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   profile: null,
   aiMode: { enabled: false, apiKey: '', provider: 'anthropic' },
   toasts: [],
+  cartFly: null,
 
   hydrate: async () => {
     try {
@@ -142,6 +154,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   dismissToast: (id) => {
     set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) }))
+  },
+
+  triggerCartFly: (request) => {
+    set({ cartFly: { ...request, id: cartFlySeq++ } })
+  },
+  clearCartFly: (id) => {
+    set((s) => (s.cartFly?.id === id ? { cartFly: null } : s))
   },
 
   getProduct: (id) => get().products.find((p) => p.id === id),

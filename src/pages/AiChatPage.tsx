@@ -33,15 +33,17 @@ export function AiChatPage() {
     [product, scopeProductId],
   )
 
-  const load = async () => {
-    const rows = await db.aiChatLogs.orderBy('createdAt').toArray()
-    setMessages(
-      rows.filter((row) => (row.productId ?? null) === scopeProductId),
-    )
-  }
-
   useEffect(() => {
-    void load()
+    let mounted = true
+    void db.aiChatLogs.orderBy('createdAt').toArray().then((rows) => {
+      if (!mounted) return
+      setMessages(
+        rows.filter((row) => (row.productId ?? null) === scopeProductId),
+      )
+    })
+    return () => {
+      mounted = false
+    }
   }, [scopeProductId])
 
   useEffect(() => {

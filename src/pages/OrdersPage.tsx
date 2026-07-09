@@ -1,12 +1,13 @@
 import { Link } from 'react-router-dom'
 import { AppShell, TopBar } from '../components/layout/AppShell'
-import { ProductEmojiArt } from '../components/product/ProductCard'
+import { ProductVisual } from '../components/product/ProductCard'
 import { EmptyState } from '../components/ui/EmptyState'
 import { formatDateTime, formatPrice } from '../lib/format'
 import { useAppStore } from '../stores/useAppStore'
 
 export function OrdersPage() {
   const orders = useAppStore((s) => s.orders)
+  const products = useAppStore((s) => s.products)
 
   return (
     <AppShell>
@@ -25,8 +26,9 @@ export function OrdersPage() {
               </div>
               <div className="mt-3 flex -space-x-2 overflow-hidden pb-1">
                 {o.items.slice(0, 6).map((it, i) => (
-                  <ProductEmojiArt
+                  <ProductVisual
                     key={`${it.productId}-${i}`}
+                    product={products.find((product) => product.id === it.productId)}
                     emoji={it.emoji ?? '📦'}
                     className="h-10 w-10 rounded-xl text-xl ring-2 ring-white"
                   />

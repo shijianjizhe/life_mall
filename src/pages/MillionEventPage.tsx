@@ -2,11 +2,12 @@ import html2canvas from 'html2canvas'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AppShell, TopBar } from '../components/layout/AppShell'
-import { ProductEmojiArt } from '../components/product/ProductCard'
+import { ProductVisual } from '../components/product/ProductCard'
 import { Button } from '../components/ui/Button'
 import { db } from '../db'
 import { CATEGORIES } from '../lib/constants'
 import { cn, formatPrice } from '../lib/format'
+import { downloadCanvasImage } from '../lib/share'
 import { useAppStore } from '../stores/useAppStore'
 import type { CategoryCode } from '../types'
 
@@ -106,10 +107,7 @@ export function MillionEventPage() {
         backgroundColor: null,
         scale: 2,
       })
-      const link = document.createElement('a')
-      link.href = canvas.toDataURL('image/png')
-      link.download = `lifemall-million-${Date.now()}.png`
-      link.click()
+      await downloadCanvasImage(canvas, `lifemall-million-${Date.now()}.png`)
       toast('专题海报已生成')
     } catch {
       toast('生成失败，请稍后再试')
@@ -173,9 +171,13 @@ export function MillionEventPage() {
             {!perfect && !overspent ? '继续挑，平行宇宙的钱包正在为你撑腰。' : null}
           </div>
           {selectedLines.length ? (
-            <div className="mt-3 flex flex-wrap gap-1 text-xl">
+            <div className="mt-3 flex flex-wrap gap-1.5">
               {selectedLines.slice(0, 12).map((line) => (
-                <span key={line.product.id}>{line.product.emoji}</span>
+                <ProductVisual
+                  key={line.product.id}
+                  product={line.product}
+                  className="h-9 w-9 rounded-xl text-lg ring-1 ring-line"
+                />
               ))}
             </div>
           ) : null}
@@ -222,7 +224,7 @@ export function MillionEventPage() {
             <div className="space-y-2">
               {selectedLines.map((line) => (
                 <div key={line.product.id} className="flex items-center gap-2 rounded-xl bg-bg px-3 py-2 text-sm">
-                  <span className="text-xl">{line.product.emoji}</span>
+                  <ProductVisual product={line.product} className="h-10 w-10 shrink-0 rounded-xl text-lg" />
                   <div className="min-w-0 flex-1">
                     <div className="line-clamp-1 font-medium">{line.product.name}</div>
                     <div className="text-xs text-muted">
@@ -241,7 +243,7 @@ export function MillionEventPage() {
           {activeProducts.map((product) => (
             <div key={product.id} className="overflow-hidden rounded-2xl border border-line bg-white shadow-sm">
               <Link to={`/product/${product.id}`}>
-                <ProductEmojiArt emoji={product.emoji} className="aspect-[4/3] text-5xl" />
+                <ProductVisual product={product} className="aspect-[4/3] text-5xl" />
               </Link>
               <div className="space-y-2 p-3">
                 <Link to={`/product/${product.id}`} className="line-clamp-1 text-sm font-semibold">

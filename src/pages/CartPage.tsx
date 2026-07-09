@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { AppShell, TopBar } from '../components/layout/AppShell'
-import { ProductEmojiArt } from '../components/product/ProductCard'
+import { ProductVisual } from '../components/product/ProductCard'
 import { Button } from '../components/ui/Button'
 import { EmptyState } from '../components/ui/EmptyState'
 import { roastFromProducts } from '../lib/aiRoast'
@@ -134,7 +134,8 @@ export function CartPage() {
                     )}
                     onClick={() => item.id && void toggleCartSelected(item.id)}
                   />
-                  <ProductEmojiArt
+                  <ProductVisual
+                    product={product}
                     emoji={product?.emoji ?? '❓'}
                     className="h-20 w-20 shrink-0 rounded-xl text-3xl"
                   />

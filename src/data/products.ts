@@ -16,8 +16,11 @@ function p(
     name,
     price,
     emoji,
-    mainImageUrl: '',
-    galleryImages: [],
+    mainImageUrl: `/products/${id}.jpg`,
+    galleryImages: [
+      `/products/${id}-detail-1.jpg`,
+      `/products/${id}-detail-2.jpg`,
+    ],
     stockText,
     description,
     tags,

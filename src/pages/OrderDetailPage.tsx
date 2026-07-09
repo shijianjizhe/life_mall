@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { AppShell, TopBar } from '../components/layout/AppShell'
-import { ProductEmojiArt } from '../components/product/ProductCard'
+import { ProductVisual } from '../components/product/ProductCard'
 import { Button } from '../components/ui/Button'
 import { EmptyState, PageSpinner } from '../components/ui/EmptyState'
 import { db } from '../db'
@@ -74,7 +74,8 @@ export function OrderDetailPage() {
                   to={`/product/${item.productId}`}
                   className="flex items-center gap-3 rounded-2xl bg-bg p-3"
                 >
-                  <ProductEmojiArt
+                  <ProductVisual
+                    product={product}
                     emoji={item.emoji ?? product?.emoji ?? '📦'}
                     className="h-16 w-16 shrink-0 rounded-xl text-2xl"
                   />

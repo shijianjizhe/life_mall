@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { BottomNav } from './BottomNav'
 import { useAppStore } from '../../stores/useAppStore'
@@ -18,6 +18,59 @@ export function AppShell({
     <div className={cn('mx-auto min-h-full max-w-lg bg-bg', className)}>
       <div className={cn(showNav && 'pb-20')}>{children}</div>
       {showNav ? <BottomNav /> : null}
+      <CartFlyOverlay />
+    </div>
+  )
+}
+
+function getCartTargetRect() {
+  const target = document.querySelector<HTMLElement>('[data-cart-target="primary"]')
+    ?? document.querySelector<HTMLElement>('[data-cart-target="top"]')
+  return target?.getBoundingClientRect() ?? null
+}
+
+function CartFlyOverlay() {
+  const request = useAppStore((s) => s.cartFly)
+  const clearCartFly = useAppStore((s) => s.clearCartFly)
+  const [target, setTarget] = useState<DOMRect | null>(null)
+
+  useEffect(() => {
+    if (!request) return
+    setTarget(getCartTargetRect())
+    const timer = window.setTimeout(() => clearCartFly(request.id), 720)
+    return () => window.clearTimeout(timer)
+  }, [clearCartFly, request])
+
+  const style = useMemo(() => {
+    if (!request) return undefined
+    const end = target ?? request.from
+    return {
+      '--fly-x': `${end.left + end.width / 2 - (request.from.left + request.from.width / 2)}px`,
+      '--fly-y': `${end.top + end.height / 2 - (request.from.top + request.from.height / 2)}px`,
+      left: request.from.left,
+      top: request.from.top,
+      width: request.from.width,
+      height: request.from.height,
+    } as CSSProperties
+  }, [request, target])
+
+  if (!request || !style) return null
+
+  return (
+    <div className="pointer-events-none fixed inset-0 z-[90]">
+      <div
+        key={request.id}
+        className="cart-fly-item overflow-hidden rounded-2xl bg-white shadow-xl ring-2 ring-white"
+        style={style}
+      >
+        {request.imageUrl ? (
+          <img src={request.imageUrl} alt="" className="h-full w-full object-cover" />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-bg text-4xl">
+            {request.emoji}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -69,6 +122,7 @@ export function TopBar({
             </Link>
             <Link
               to="/cart"
+              data-cart-target="top"
               className="relative flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm shadow-sm ring-1 ring-line"
             >
               🛒

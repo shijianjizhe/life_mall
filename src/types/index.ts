@@ -143,4 +143,7 @@ export interface CategoryMeta {
   emoji: string
   subtitle: string
   theme: string
+  cardClass?: string
+  priceClass?: string
+  pageClass?: string
 }

@@ -2,10 +2,12 @@ import html2canvas from 'html2canvas'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { AppShell, TopBar } from '../components/layout/AppShell'
+import { ProductVisual } from '../components/product/ProductCard'
 import { Button } from '../components/ui/Button'
 import { db } from '../db'
 import { CATEGORY_MAP } from '../lib/constants'
 import { cn, formatDateTime, formatPrice } from '../lib/format'
+import { downloadCanvasImage, shareCanvasImage, shareResultMessage } from '../lib/share'
 import { useAppStore } from '../stores/useAppStore'
 import type { AiReport, Order, Product } from '../types'
 
@@ -92,6 +94,12 @@ export function PosterPage() {
     return sum + (product?.price ?? 0) * item.quantity
   }, 0)
   const posterOrderCount = posterOrder?.items.reduce((sum, item) => sum + item.quantity, 0) ?? 0
+  const hasPosterItems =
+    template === 'dream'
+      ? wishlist.length > 0
+      : template === 'order'
+        ? Boolean(posterOrder?.items.length)
+        : sourceProducts.length > 0
 
   const capture = async () => {
     if (!posterRef.current) throw new Error('poster missing')
@@ -106,11 +114,7 @@ export function PosterPage() {
     setBusy(true)
     try {
       const canvas = await capture()
-      const url = canvas.toDataURL('image/png')
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `lifemall-poster-${Date.now()}.png`
-      link.click()
+      await downloadCanvasImage(canvas, `lifemall-poster-${Date.now()}.png`)
       toast('海报已生成')
     } catch {
       toast('生成失败，请稍后再试')
@@ -123,17 +127,16 @@ export function PosterPage() {
     setBusy(true)
     try {
       const canvas = await capture()
-      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))
-      if (!blob) throw new Error('blob failed')
-      const file = new File([blob], 'lifemall-poster.png', { type: 'image/png' })
-      if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: '人生模拟商城战绩' })
-        toast('已唤起系统分享')
-      } else {
-        await save()
-      }
-    } catch {
-      toast('分享失败，已保留生成入口')
+      const result = await shareCanvasImage({
+        canvas,
+        filename: 'lifemall-poster.png',
+        title: '人生模拟商城战绩',
+        text: '我的人生模拟商城战绩：永远不会到货，但足够快乐。',
+      })
+      toast(shareResultMessage(result))
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return
+      toast('分享失败，请稍后再试')
     } finally {
       setBusy(false)
     }
@@ -236,13 +239,15 @@ export function PosterPage() {
                       ? '收藏商品'
                       : '代表商品'}
               </div>
-              <div className="grid grid-cols-4 gap-2 text-center">
-                {template === 'dream'
+              {hasPosterItems ? (
+                <div className="grid grid-cols-4 gap-2 text-center">
+                  {template === 'dream'
                   ? wishlist.slice(0, 8).map((item) => (
                       <div key={item.id} className="rounded-xl bg-white/20 px-1 py-2">
-                        <div className="text-xl">
-                          {item.productId ? productMap.get(item.productId)?.emoji ?? '⭐' : '⭐'}
-                        </div>
+                        <PosterThumb
+                          product={item.productId ? productMap.get(item.productId) : null}
+                          emoji={item.productId ? productMap.get(item.productId)?.emoji ?? '⭐' : '⭐'}
+                        />
                         <div className="mt-1 line-clamp-1 text-[10px] opacity-90">
                           {item.customTitle}
                         </div>
@@ -251,7 +256,10 @@ export function PosterPage() {
                   : template === 'order'
                     ? (posterOrder?.items ?? []).slice(0, 8).map((item, index) => (
                         <div key={`${item.productId}-${index}`} className="rounded-xl bg-white/20 px-1 py-2">
-                          <div className="text-xl">{item.emoji ?? productMap.get(item.productId)?.emoji ?? '📦'}</div>
+                          <PosterThumb
+                            product={productMap.get(item.productId)}
+                            emoji={item.emoji ?? productMap.get(item.productId)?.emoji ?? '📦'}
+                          />
                           <div className="mt-1 line-clamp-1 text-[10px] opacity-90">
                             {item.nameSnapshot}
                           </div>
@@ -259,13 +267,32 @@ export function PosterPage() {
                       ))
                     : sourceProducts.slice(0, 8).map((product) => (
                         <div key={product.id} className="rounded-xl bg-white/20 px-1 py-2">
-                          <div className="text-xl">{product.emoji}</div>
+                          <PosterThumb product={product} emoji={product.emoji} />
                           <div className="mt-1 line-clamp-1 text-[10px] opacity-90">
                             {product.name}
                           </div>
                         </div>
                       ))}
-              </div>
+                </div>
+              ) : (
+                <div className="rounded-2xl bg-white/20 px-4 py-6 text-center">
+                  <div className="text-4xl">
+                    {template === 'cart' && '🛒'}
+                    {template === 'favorite' && '💖'}
+                    {template === 'annual' && '🧾'}
+                    {template === 'dream' && '⭐'}
+                    {template === 'order' && '📦'}
+                  </div>
+                  <p className="mt-3 text-sm font-semibold opacity-95">
+                    {template === 'cart' && '购物车还在等第一个幻想'}
+                    {template === 'favorite' && '心动收藏还没开始发光'}
+                    {template === 'annual' && '年度账单正在攒素材'}
+                    {template === 'dream' && '梦想清单还留着第一颗星'}
+                    {template === 'order' && '假订单战绩尚未解锁'}
+                  </p>
+                  <p className="mt-1 text-xs opacity-75">先保存这张空状态，也很有纪念意义。</p>
+                </div>
+              )}
             </div>
 
             <div className="mt-6 border-t border-white/25 pt-4 text-xs opacity-75">
@@ -295,5 +322,21 @@ function PosterStat({ label, value }: { label: string; value: string }) {
       <div className="text-base font-bold">{value}</div>
       <div className="mt-1 text-[11px] opacity-75">{label}</div>
     </div>
+  )
+}
+
+function PosterThumb({
+  product,
+  emoji,
+}: {
+  product?: Product | null
+  emoji: string
+}) {
+  return (
+    <ProductVisual
+      product={product}
+      emoji={emoji}
+      className="mx-auto h-10 w-10 rounded-xl bg-white/80 text-lg"
+    />
   )
 }

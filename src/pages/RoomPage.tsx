@@ -1,15 +1,19 @@
 import html2canvas from 'html2canvas'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AppShell, TopBar } from '../components/layout/AppShell'
-import { ProductEmojiArt } from '../components/product/ProductCard'
+import { ProductVisual } from '../components/product/ProductCard'
 import { Button } from '../components/ui/Button'
 import { EmptyState } from '../components/ui/EmptyState'
 import { db } from '../db'
 import { cn } from '../lib/format'
+import { safeVibrate } from '../lib/haptics'
+import { downloadCanvasImage, shareCanvasImage, shareResultMessage } from '../lib/share'
 import { useAppStore } from '../stores/useAppStore'
 import type { Product, RoomItem } from '../types'
 
 const ROOM_THEME_KEY = 'roomTheme'
+const ITEM_SIZE = 64
+const SNAP_THRESHOLD = 10
 
 const themes = [
   { id: 'cozy', label: '简约风', className: 'from-[#FDE68A] via-[#FDF2F8] to-[#BAE6FD]' },
@@ -19,6 +23,10 @@ const themes = [
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value))
+}
+
+function distance(a: { clientX: number; clientY: number }, b: { clientX: number; clientY: number }) {
+  return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY)
 }
 
 export function RoomPage() {
@@ -36,8 +44,15 @@ export function RoomPage() {
     originX: number
     originY: number
   } | null>(null)
+  const [pinch, setPinch] = useState<{
+    id: number
+    startDistance: number
+    startScale: number
+  } | null>(null)
+  const [guides, setGuides] = useState<{ x?: number; y?: number }>({})
   const canvasRef = useRef<HTMLDivElement | null>(null)
   const itemsRef = useRef<RoomItem[]>([])
+  const lastSnapVibrateAt = useRef(0)
 
   const ownedProducts = useMemo(() => {
     const ids = new Set<string>()
@@ -87,8 +102,16 @@ export function RoomPage() {
     const move = (event: PointerEvent) => {
       const rect = canvasRef.current?.getBoundingClientRect()
       if (!rect) return
-      const nextX = clamp(drag.originX + event.clientX - drag.startX, 8, rect.width - 72)
-      const nextY = clamp(drag.originY + event.clientY - drag.startY, 8, rect.height - 72)
+      const rawX = clamp(drag.originX + event.clientX - drag.startX, 8, rect.width - ITEM_SIZE - 8)
+      const rawY = clamp(drag.originY + event.clientY - drag.startY, 8, rect.height - ITEM_SIZE - 8)
+      const { x: nextX, y: nextY, guides: nextGuides } = snapPosition(
+        rawX,
+        rawY,
+        drag.id,
+        rect.width,
+        rect.height,
+      )
+      setGuides(nextGuides)
       setItems((prev) =>
         prev.map((item) =>
           item.id === drag.id
@@ -107,6 +130,7 @@ export function RoomPage() {
         })
       }
       setDrag(null)
+      setGuides({})
     }
 
     window.addEventListener('pointermove', move)
@@ -116,6 +140,54 @@ export function RoomPage() {
       window.removeEventListener('pointerup', up)
     }
   }, [drag])
+
+  const snapPosition = (
+    x: number,
+    y: number,
+    id: number,
+    width: number,
+    height: number,
+  ) => {
+    const centerX = x + ITEM_SIZE / 2
+    const centerY = y + ITEM_SIZE / 2
+    const canvasCenterX = width / 2
+    const canvasCenterY = height / 2
+    let nextX = x
+    let nextY = y
+    const nextGuides: { x?: number; y?: number } = {}
+
+    if (Math.abs(centerX - canvasCenterX) <= SNAP_THRESHOLD) {
+      nextX = canvasCenterX - ITEM_SIZE / 2
+      nextGuides.x = canvasCenterX
+    }
+    if (Math.abs(centerY - canvasCenterY) <= SNAP_THRESHOLD) {
+      nextY = canvasCenterY - ITEM_SIZE / 2
+      nextGuides.y = canvasCenterY
+    }
+
+    for (const other of itemsRef.current) {
+      if (other.id === id) continue
+      const otherCenterX = other.positionX + ITEM_SIZE / 2
+      const otherCenterY = other.positionY + ITEM_SIZE / 2
+      if (Math.abs(centerX - otherCenterX) <= SNAP_THRESHOLD) {
+        nextX = otherCenterX - ITEM_SIZE / 2
+        nextGuides.x = otherCenterX
+      }
+      if (Math.abs(centerY - otherCenterY) <= SNAP_THRESHOLD) {
+        nextY = otherCenterY - ITEM_SIZE / 2
+        nextGuides.y = otherCenterY
+      }
+    }
+
+    if (nextGuides.x != null || nextGuides.y != null) {
+      const now = Date.now()
+      if (now - lastSnapVibrateAt.current > 220) {
+        safeVibrate(4)
+        lastSnapVibrateAt.current = now
+      }
+    }
+    return { x: nextX, y: nextY, guides: nextGuides }
+  }
 
   const selectTheme = async (entry: (typeof themes)[number]) => {
     setTheme(entry)
@@ -133,7 +205,12 @@ export function RoomPage() {
     })
     await load()
     setSelectedId(id as number)
+    safeVibrate(12)
     toast('已摆进虚拟房间')
+  }
+
+  const updateItemScale = async (id: number, scale: number) => {
+    await updateItem(id, { scale: clamp(scale, 0.6, 2) })
   }
 
   const updateSelected = async (patch: Partial<RoomItem>) => {
@@ -150,6 +227,7 @@ export function RoomPage() {
   const removeSelected = async () => {
     if (!selected?.id) return
     await db.roomItems.delete(selected.id)
+    safeVibrate([8, 24, 8])
     setSelectedId(null)
     await load()
   }
@@ -169,10 +247,7 @@ export function RoomPage() {
       setSelectedId(null)
       await new Promise((resolve) => window.setTimeout(resolve, 30))
       const canvas = await captureRoom()
-      const link = document.createElement('a')
-      link.href = canvas.toDataURL('image/png')
-      link.download = `lifemall-room-${Date.now()}.png`
-      link.click()
+      await downloadCanvasImage(canvas, `lifemall-room-${Date.now()}.png`)
       toast('房间截图已生成')
     } catch {
       toast('生成失败，请稍后再试')
@@ -187,21 +262,15 @@ export function RoomPage() {
       setSelectedId(null)
       await new Promise((resolve) => window.setTimeout(resolve, 30))
       const canvas = await captureRoom()
-      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))
-      if (!blob) throw new Error('blob failed')
-      const file = new File([blob], 'lifemall-room.png', { type: 'image/png' })
-      if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: '我的人生商城虚拟房间' })
-        toast('已唤起系统分享')
-      } else {
-        const link = document.createElement('a')
-        link.href = URL.createObjectURL(blob)
-        link.download = `lifemall-room-${Date.now()}.png`
-        link.click()
-        URL.revokeObjectURL(link.href)
-        toast('当前浏览器不支持系统分享，已保存图片')
-      }
-    } catch {
+      const result = await shareCanvasImage({
+        canvas,
+        filename: 'lifemall-room.png',
+        title: '我的人生商城虚拟房间',
+        text: '我在 Life Mall 摆好了一个永远不会到货的虚拟房间。',
+      })
+      toast(shareResultMessage(result))
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return
       toast('分享失败，请稍后再试')
     } finally {
       setBusy(false)
@@ -245,6 +314,18 @@ export function RoomPage() {
           <div className="absolute left-5 top-5 rounded-full bg-white/25 px-3 py-1 text-xs text-white backdrop-blur">
             已摆放 {items.length} 件
           </div>
+          {guides.x != null ? (
+            <div
+              className="pointer-events-none absolute inset-y-0 w-px bg-brand-pink/80 shadow-[0_0_14px_rgba(255,107,157,0.8)]"
+              style={{ left: guides.x }}
+            />
+          ) : null}
+          {guides.y != null ? (
+            <div
+              className="pointer-events-none absolute inset-x-0 h-px bg-brand-pink/80 shadow-[0_0_14px_rgba(255,107,157,0.8)]"
+              style={{ top: guides.y }}
+            />
+          ) : null}
           {items.map((item) => {
             const product = productMap.get(item.productId)
             return (
@@ -265,6 +346,7 @@ export function RoomPage() {
                   event.stopPropagation()
                   if (!item.id) return
                   setSelectedId(item.id)
+                  setPinch(null)
                   setDrag({
                     id: item.id,
                     startX: event.clientX,
@@ -278,15 +360,45 @@ export function RoomPage() {
                   event.stopPropagation()
                   if (!item.id) return
                   setSelectedId(item.id)
+                  void updateItemScale(item.id, item.scale + (event.deltaY < 0 ? 0.08 : -0.08))
+                }}
+                onTouchStart={(event) => {
+                  if (!item.id || event.touches.length !== 2) return
+                  event.stopPropagation()
+                  setDrag(null)
+                  setSelectedId(item.id)
+                  setPinch({
+                    id: item.id,
+                    startDistance: distance(event.touches[0]!, event.touches[1]!),
+                    startScale: item.scale,
+                  })
+                }}
+                onTouchMove={(event) => {
+                  if (!pinch || pinch.id !== item.id || event.touches.length !== 2) return
+                  event.preventDefault()
                   const nextScale = clamp(
-                    item.scale + (event.deltaY < 0 ? 0.08 : -0.08),
+                    pinch.startScale * (distance(event.touches[0]!, event.touches[1]!) / pinch.startDistance),
                     0.6,
                     2,
                   )
-                  void updateItem(item.id, { scale: nextScale })
+                  setItems((prev) =>
+                    prev.map((entry) =>
+                      entry.id === pinch.id ? { ...entry, scale: nextScale } : entry,
+                    ),
+                  )
+                }}
+                onTouchEnd={() => {
+                  if (!pinch || pinch.id !== item.id) return
+                  const next = itemsRef.current.find((entry) => entry.id === pinch.id)
+                  setPinch(null)
+                  if (next?.id != null) void db.roomItems.update(next.id, { scale: next.scale })
                 }}
               >
-                {product?.emoji ?? '📦'}
+                <ProductVisual
+                  product={product}
+                  emoji={product?.emoji ?? '📦'}
+                  className="h-full w-full rounded-2xl text-3xl"
+                />
               </button>
             )
           })}
@@ -299,8 +411,8 @@ export function RoomPage() {
               {productMap.get(selected.productId)?.name ?? '商品信息丢失'}
             </div>
             <div className="grid grid-cols-5 gap-2">
-              <Button size="sm" variant="secondary" onClick={() => void updateSelected({ scale: Math.max(0.6, selected.scale - 0.1) })}>缩小</Button>
-              <Button size="sm" variant="secondary" onClick={() => void updateSelected({ scale: Math.min(2, selected.scale + 0.1) })}>放大</Button>
+              <Button size="sm" variant="secondary" onClick={() => selected.id && void updateItemScale(selected.id, selected.scale - 0.1)}>缩小</Button>
+              <Button size="sm" variant="secondary" onClick={() => selected.id && void updateItemScale(selected.id, selected.scale + 0.1)}>放大</Button>
               <Button size="sm" variant="secondary" onClick={() => void updateSelected({ zIndex: Date.now() })}>置顶</Button>
               <Button size="sm" variant="secondary" onClick={() => void updateSelected({ zIndex: Math.min(0, ...items.map((item) => item.zIndex)) - 1 })}>置底</Button>
               <Button size="sm" variant="danger" onClick={() => void removeSelected()}>删除</Button>
@@ -324,8 +436,8 @@ export function RoomPage() {
                     )}
                     onClick={() => void addToRoom(product)}
                   >
-                    <ProductEmojiArt
-                      emoji={product.emoji}
+                    <ProductVisual
+                      product={product}
                       className={cn(
                         'h-16 rounded-2xl text-3xl',
                         placed ? 'ring-2 ring-brand-pink' : 'ring-1 ring-line',

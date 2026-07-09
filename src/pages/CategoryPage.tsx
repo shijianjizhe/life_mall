@@ -58,7 +58,7 @@ export function CategoryPage() {
         </div>
       </div>
 
-      <div className="px-4 py-3">
+      <div className={cn('px-4 py-3', meta.pageClass)}>
         <div className="mb-3 flex gap-2 overflow-x-auto no-scrollbar">
           {(
             [
@@ -89,7 +89,11 @@ export function CategoryPage() {
 
         {visible.length ? (
           <>
-            <ProductGrid products={visible} />
+            <ProductGrid
+              products={visible}
+              themePriceClass={meta.priceClass}
+              cardClass={meta.cardClass}
+            />
             {hasMore ? (
               <button
                 type="button"

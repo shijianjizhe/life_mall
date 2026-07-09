@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { AppShell, TopBar } from '../components/layout/AppShell'
-import { ProductEmojiArt } from '../components/product/ProductCard'
+import { ProductVisual } from '../components/product/ProductCard'
 import { Button } from '../components/ui/Button'
 import { EmptyState } from '../components/ui/EmptyState'
 import { DELIVERY_COPIES } from '../data/copyPool'
@@ -11,7 +11,15 @@ import {
   FAKE_PAY_METHODS,
 } from '../lib/constants'
 import { formatPrice, pickRandom } from '../lib/format'
+import { safeVibrate } from '../lib/haptics'
 import { useAppStore } from '../stores/useAppStore'
+
+const PAY_STAGES = [
+  { progress: 18, line: '正在校验快乐余额……' },
+  { progress: 46, line: '正在联系平行宇宙仓库……' },
+  { progress: 78, line: '正在假装扣款……' },
+  { progress: 100, line: '正在生成永不送达面单……' },
+]
 
 export function CheckoutPage() {
   const navigate = useNavigate()
@@ -29,6 +37,7 @@ export function CheckoutPage() {
   const [pay, setPay] = useState(FAKE_PAY_METHODS[0]!.id)
   const [paying, setPaying] = useState(false)
   const [loadingLine, setLoadingLine] = useState(CHECKOUT_LOADING_LINES[0]!)
+  const [payProgress, setPayProgress] = useState(0)
 
   const lines = useMemo(
     () =>
@@ -44,14 +53,6 @@ export function CheckoutPage() {
     0,
   )
 
-  useEffect(() => {
-    if (!paying) return
-    const t = window.setInterval(() => {
-      setLoadingLine(pickRandom(CHECKOUT_LOADING_LINES))
-    }, 600)
-    return () => window.clearInterval(t)
-  }, [paying])
-
   if (!selected.length && !paying) {
     return (
       <AppShell showNav={false}>
@@ -66,9 +67,16 @@ export function CheckoutPage() {
   }
 
   const confirmPay = async () => {
+    if (paying) return
     setPaying(true)
-    const duration = 1500 + Math.random() * 1000
-    await new Promise((r) => setTimeout(r, duration))
+    setPayProgress(0)
+    const duration = 1700 + Math.random() * 600
+    for (const [index, stage] of PAY_STAGES.entries()) {
+      await new Promise((r) => setTimeout(r, duration / PAY_STAGES.length))
+      setPayProgress(stage.progress)
+      setLoadingLine(index === 1 ? pickRandom(CHECKOUT_LOADING_LINES) : stage.line)
+    }
+    safeVibrate([10, 28, 12])
     const orderId = await createOrder({
       items: selected,
       deliveryCopy: pickRandom(DELIVERY_COPIES),
@@ -82,10 +90,16 @@ export function CheckoutPage() {
   if (paying) {
     return (
       <div className="flex min-h-full flex-col items-center justify-center bg-gradient-to-b from-purple-50 to-pink-50 px-6 text-center">
-        <div className="mb-6 text-6xl animate-bounce">🛒</div>
-        <div className="mb-4 h-2 w-48 overflow-hidden rounded-full bg-white">
-          <div className="h-full w-2/3 animate-pulse brand-gradient" />
+        <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-3xl bg-white text-6xl shadow-sm animate-bounce">
+          🛒
         </div>
+        <div className="mb-4 h-3 w-56 overflow-hidden rounded-full bg-white shadow-inner">
+          <div
+            className="h-full rounded-full brand-gradient transition-all duration-500 ease-out"
+            style={{ width: `${payProgress}%` }}
+          />
+        </div>
+        <div className="mb-3 text-xs font-semibold text-brand-pink">{payProgress}%</div>
         <p className="text-sm text-muted">{loadingLine}</p>
         <p className="mt-6 text-xs text-muted">虚拟支付中，请勿当真…</p>
       </div>
@@ -101,7 +115,8 @@ export function CheckoutPage() {
           <div className="flex gap-2 overflow-x-auto no-scrollbar">
             {lines.map(({ item, product }) => (
               <div key={item.id} className="w-16 shrink-0 text-center">
-                <ProductEmojiArt
+                <ProductVisual
+                  product={product}
                   emoji={product?.emoji ?? '❓'}
                   className="h-14 w-14 rounded-xl text-2xl"
                 />

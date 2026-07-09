@@ -1,4 +1,4 @@
-import { SCHEMA_VERSION } from '../lib/constants'
+import { MAX_CART_QTY, SCHEMA_VERSION } from '../lib/constants'
 import type { BackupPayload } from '../types'
 import { db } from './index'
 import { ensureSeedData } from './seed'
@@ -82,6 +82,20 @@ function assertObjectRows(rows: unknown[], store: string) {
   }
 }
 
+function isFiniteNumberInRange(value: unknown, min: number, max: number): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max
+}
+
+function isIsoDate(value: unknown): value is string {
+  return typeof value === 'string' && !Number.isNaN(Date.parse(value))
+}
+
+function isYmd(value: unknown): value is string {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+  const date = new Date(`${value}T00:00:00`)
+  return !Number.isNaN(date.getTime()) && value === date.toISOString().slice(0, 10)
+}
+
 function validateBackupPayload(payload: unknown): asserts payload is BackupPayload {
   if (!isRecord(payload)) {
     throw new Error('备份文件格式无效')
@@ -117,13 +131,23 @@ function validateBackupPayload(payload: unknown): asserts payload is BackupPaylo
   }
 
   for (const row of data.userProfile) {
-    if (typeof row.id !== 'string') throw new Error('备份文件中 userProfile.id 无效')
+    if (
+      typeof row.id !== 'string' ||
+      typeof row.nickname !== 'string' ||
+      typeof row.avatarUrl !== 'string' ||
+      !isFiniteNumberInRange(row.happyCoin, 0, 1_000_000_000) ||
+      !isIsoDate(row.joinedAt) ||
+      typeof row.onboardingCompleted !== 'boolean'
+    ) {
+      throw new Error('备份文件中 userProfile 数据格式无效')
+    }
   }
   for (const row of data.cartItems) {
     if (
       typeof row.productId !== 'string' ||
-      typeof row.quantity !== 'number' ||
-      typeof row.selected !== 'boolean'
+      !isFiniteNumberInRange(row.quantity, 1, MAX_CART_QTY) ||
+      typeof row.selected !== 'boolean' ||
+      !isIsoDate(row.addedAt)
     ) {
       throw new Error('备份文件中 cartItems 数据格式无效')
     }
@@ -131,9 +155,13 @@ function validateBackupPayload(payload: unknown): asserts payload is BackupPaylo
   for (const row of data.orders) {
     if (
       !Array.isArray(row.items) ||
-      typeof row.totalAmount !== 'number' ||
+      !isFiniteNumberInRange(row.totalAmount, 0, 1_000_000_000_000) ||
+      row.status !== 'paid_fake' ||
+      row.deliveryStatus !== 'never_delivered' ||
       typeof row.deliveryCopy !== 'string' ||
-      typeof row.createdAt !== 'string'
+      typeof row.addressLabel !== 'string' ||
+      typeof row.payMethod !== 'string' ||
+      !isIsoDate(row.createdAt)
     ) {
       throw new Error('备份文件中 orders 数据格式无效')
     }
@@ -142,23 +170,23 @@ function validateBackupPayload(payload: unknown): asserts payload is BackupPaylo
         !isRecord(item) ||
         typeof item.productId !== 'string' ||
         typeof item.nameSnapshot !== 'string' ||
-        typeof item.priceSnapshot !== 'number' ||
-        typeof item.quantity !== 'number'
+        !isFiniteNumberInRange(item.priceSnapshot, 0, 1_000_000_000_000) ||
+        !isFiniteNumberInRange(item.quantity, 1, MAX_CART_QTY)
       ) {
         throw new Error('备份文件中 orders.items 数据格式无效')
       }
     }
   }
   for (const row of data.favorites) {
-    if (typeof row.productId !== 'string' || typeof row.createdAt !== 'string') {
+    if (typeof row.productId !== 'string' || !isIsoDate(row.createdAt)) {
       throw new Error('备份文件中 favorites 数据格式无效')
     }
   }
   for (const row of data.checkins) {
     if (
-      typeof row.checkinDate !== 'string' ||
-      typeof row.rewardCoin !== 'number' ||
-      typeof row.streakDays !== 'number'
+      !isYmd(row.checkinDate) ||
+      !isFiniteNumberInRange(row.rewardCoin, 0, 10_000) ||
+      !isFiniteNumberInRange(row.streakDays, 1, 10_000)
     ) {
       throw new Error('备份文件中 checkins 数据格式无效')
     }
@@ -168,7 +196,7 @@ function validateBackupPayload(payload: unknown): asserts payload is BackupPaylo
       typeof row.title !== 'string' ||
       typeof row.content !== 'string' ||
       !isRecord(row.basedOnSnapshot) ||
-      typeof row.createdAt !== 'string'
+      !isIsoDate(row.createdAt)
     ) {
       throw new Error('备份文件中 aiReports 数据格式无效')
     }
@@ -178,7 +206,7 @@ function validateBackupPayload(payload: unknown): asserts payload is BackupPaylo
       (row.productId != null && typeof row.productId !== 'string') ||
       (row.role !== 'user' && row.role !== 'assistant') ||
       typeof row.content !== 'string' ||
-      typeof row.createdAt !== 'string'
+      !isIsoDate(row.createdAt)
     ) {
       throw new Error('备份文件中 aiChatLogs 数据格式无效')
     }
@@ -188,7 +216,7 @@ function validateBackupPayload(payload: unknown): asserts payload is BackupPaylo
       (row.productId != null && typeof row.productId !== 'string') ||
       typeof row.customTitle !== 'string' ||
       typeof row.fulfilled !== 'boolean' ||
-      typeof row.createdAt !== 'string'
+      !isIsoDate(row.createdAt)
     ) {
       throw new Error('备份文件中 wishlistItems 数据格式无效')
     }
@@ -196,16 +224,27 @@ function validateBackupPayload(payload: unknown): asserts payload is BackupPaylo
   for (const row of data.roomItems) {
     if (
       typeof row.productId !== 'string' ||
-      typeof row.positionX !== 'number' ||
-      typeof row.positionY !== 'number' ||
-      typeof row.scale !== 'number' ||
-      typeof row.zIndex !== 'number'
+      !isFiniteNumberInRange(row.positionX, -10000, 10000) ||
+      !isFiniteNumberInRange(row.positionY, -10000, 10000) ||
+      !isFiniteNumberInRange(row.scale, 0.1, 10) ||
+      !isFiniteNumberInRange(row.zIndex, -10_000_000_000_000, 10_000_000_000_000)
     ) {
       throw new Error('备份文件中 roomItems 数据格式无效')
     }
   }
   for (const row of data.settings) {
     if (typeof row.key !== 'string') throw new Error('备份文件中 settings.key 无效')
+    if (row.key === 'aiAdvancedMode') {
+      if (!isRecord(row.value)) throw new Error('备份文件中 aiAdvancedMode 设置无效')
+      const value = row.value
+      if (
+        typeof value.enabled !== 'boolean' ||
+        typeof value.apiKey !== 'string' ||
+        (value.provider !== 'anthropic' && value.provider !== 'openai')
+      ) {
+        throw new Error('备份文件中 aiAdvancedMode 设置无效')
+      }
+    }
   }
 }
 export async function importBackup(payload: BackupPayload): Promise<void> {

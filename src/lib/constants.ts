@@ -14,6 +14,9 @@ export const CATEGORIES: CategoryMeta[] = [
     emoji: '😂',
     subtitle: '看看就好，别当真',
     theme: 'from-[#1A1A2E] to-[#D4AF37]',
+    cardClass: 'border-[#D4AF37]/55 bg-[#1A1A2E] text-white shadow-[0_10px_24px_rgba(26,26,46,0.18)]',
+    priceClass: 'text-[#D4AF37]',
+    pageClass: 'bg-[#f8f3e5]',
   },
   {
     code: 'childhood_dream',
@@ -21,6 +24,9 @@ export const CATEGORIES: CategoryMeta[] = [
     emoji: '🧸',
     subtitle: '给童年的自己补一张订单',
     theme: 'from-[#4ECDC4] to-[#FFE66D]',
+    cardClass: 'rounded-3xl border-[#4ECDC4]/35 bg-[#fffdf2]',
+    priceClass: 'text-[#FF6B9D]',
+    pageClass: 'bg-[#f3fffb]',
   },
   {
     code: 'impossible',
@@ -28,6 +34,9 @@ export const CATEGORIES: CategoryMeta[] = [
     emoji: '🌕',
     subtitle: '平行宇宙专供',
     theme: 'from-[#2E1F5E] to-[#C0C0F0]',
+    cardClass: 'border-[#C0C0F0]/45 bg-[#24194d] text-white shadow-[0_10px_24px_rgba(46,31,94,0.2)]',
+    priceClass: 'text-[#C0C0F0]',
+    pageClass: 'bg-[#f2f0ff]',
   },
   {
     code: 'abstract',
@@ -35,6 +44,9 @@ export const CATEGORIES: CategoryMeta[] = [
     emoji: '✨',
     subtitle: '能加购就很抽象了',
     theme: 'from-[#0A0A0A] to-[#B4FF39]',
+    cardClass: 'border-[#B4FF39]/70 bg-[#0A0A0A] text-white shadow-[0_0_0_1px_rgba(180,255,57,0.25)]',
+    priceClass: 'text-[#B4FF39]',
+    pageClass: 'bg-[#f5ffe8]',
   },
 ]
 

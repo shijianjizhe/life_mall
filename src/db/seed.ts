@@ -26,12 +26,8 @@ export async function ensureSeedData(): Promise<void> {
     })
     await db.productCopies.bulkAdd(copies)
   } else {
-    // 种子升级：合并新商品，不覆盖用户数据
-    const existingIds = new Set((await db.products.toArray()).map((p) => p.id))
-    const missing = SEED_PRODUCTS.filter((p) => !existingIds.has(p.id))
-    if (missing.length) {
-      await db.products.bulkPut(missing)
-    }
+    // 商品是应用预置数据。每次启动同步种子字段，便于补图片等静态资产。
+    await db.products.bulkPut(SEED_PRODUCTS)
   }
 
   const profile = await db.userProfile.get('local-user')

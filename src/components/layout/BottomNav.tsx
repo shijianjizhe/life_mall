@@ -20,6 +20,7 @@ export function BottomNav() {
             key={item.to}
             to={item.to}
             end={item.end}
+            data-cart-target={item.to === '/cart' ? 'primary' : undefined}
             className={({ isActive }) =>
               cn(
                 'relative flex flex-1 flex-col items-center justify-center gap-0.5 text-[11px]',
