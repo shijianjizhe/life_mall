@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { SEED_PRODUCTS } from '../data/products'
 import { db } from '../db'
 import { MAX_CART_QTY } from '../lib/constants'
 import { ensureSeedData } from '../db/seed'
@@ -70,6 +71,7 @@ interface AppState {
 
 let toastSeq = 1
 let cartFlySeq = 1
+let hydratePromise: Promise<void> | null = null
 
 export const useAppStore = create<AppState>((set, get) => ({
   ready: false,
@@ -84,37 +86,49 @@ export const useAppStore = create<AppState>((set, get) => ({
   cartFly: null,
 
   hydrate: async () => {
-    try {
-      await ensureSeedData()
-      const [products, cartItems, favorites, orders, wishlist, profile, aiRow] =
-        await Promise.all([
-          db.products.toArray(),
-          db.cartItems.toArray(),
-          db.favorites.toArray(),
-          db.orders.orderBy('createdAt').reverse().toArray(),
-          db.wishlistItems.orderBy('createdAt').reverse().toArray(),
-          db.userProfile.get('local-user'),
-          db.settings.get('aiAdvancedMode'),
-        ])
-      set({
-        ready: true,
-        products,
-        cartItems,
-        favorites,
-        orders,
-        wishlist,
-        profile: profile ?? null,
-        aiMode: (aiRow?.value as AiAdvancedMode) ?? {
-          enabled: false,
-          apiKey: '',
-          provider: 'anthropic',
-        },
-      })
-    } catch (e) {
-      console.error(e)
-      set({ ready: true })
-      get().toast('本地数据库初始化异常，部分功能可能不可用（如隐私模式）')
-    }
+    if (hydratePromise) return hydratePromise
+    hydratePromise = (async () => {
+      try {
+        await ensureSeedData()
+        const [products, cartItems, favorites, orders, wishlist, profile, aiRow] =
+          await Promise.all([
+            db.products.toArray(),
+            db.cartItems.toArray(),
+            db.favorites.toArray(),
+            db.orders.orderBy('createdAt').reverse().toArray(),
+            db.wishlistItems.orderBy('createdAt').reverse().toArray(),
+            db.userProfile.get('local-user'),
+            db.settings.get('aiAdvancedMode'),
+          ])
+        set({
+          ready: true,
+          products,
+          cartItems,
+          favorites,
+          orders,
+          wishlist,
+          profile: profile ?? null,
+          aiMode: (aiRow?.value as AiAdvancedMode) ?? {
+            enabled: false,
+            apiKey: '',
+            provider: 'anthropic',
+          },
+        })
+      } catch (e) {
+        const detail = {
+          name: e instanceof Error ? e.name : undefined,
+          message: e instanceof Error ? e.message : String(e),
+          stack: e instanceof Error ? e.stack : undefined,
+        }
+        console.error('LifeMall hydrate failed', {
+          ...detail,
+        })
+        set({ ready: true, products: SEED_PRODUCTS })
+        get().toast('本地数据库初始化异常，部分功能可能不可用（如隐私模式）')
+      }
+    })()
+    await hydratePromise
+    hydratePromise = null
   },
 
   refreshCart: async () => {

@@ -44,6 +44,20 @@ export class LifeMallDB extends Dexie {
       roomItems: '++id, productId',
       settings: 'key',
     })
+    this.version(2).stores({
+      userProfile: 'id',
+      products: 'id, categoryCode',
+      productCopies: '++id, productId, copyType',
+      cartItems: '++id, productId',
+      orders: '++id, createdAt',
+      favorites: '++id, productId',
+      checkins: '++id, checkinDate',
+      aiReports: '++id, createdAt',
+      aiChatLogs: '++id, productId, createdAt',
+      wishlistItems: '++id, productId, createdAt',
+      roomItems: '++id, productId',
+      settings: 'key',
+    })
   }
 }
 
