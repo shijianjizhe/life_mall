@@ -167,7 +167,7 @@ export function MillionEventPage() {
           </div>
           <div className="mt-3 min-h-5 text-sm font-medium">
             {perfect ? '财富自由挑战达成！预算花得刚刚好。' : null}
-            {overspent ? '就知道你 managing money 能力不行，但没关系反正是假钱。' : null}
+            {overspent ? '就知道你 managing money 能力不行，但没关系反正是虚拟预算。' : null}
             {!perfect && !overspent ? '继续挑，平行宇宙的钱包正在为你撑腰。' : null}
           </div>
           {selectedLines.length ? (

@@ -64,7 +64,7 @@ export function ProfilePage() {
 
       <div className="-mt-3 grid grid-cols-2 gap-3 px-4 sm:grid-cols-4">
         {[
-          { label: '假下单', value: `${orders.length} 次` },
+          { label: '下单', value: `${orders.length} 次` },
           { label: '虚拟消费', value: formatPrice(spent) },
           { label: '收藏', value: `${favorites.length}` },
           { label: '连续签到', value: `${streak} 天` },

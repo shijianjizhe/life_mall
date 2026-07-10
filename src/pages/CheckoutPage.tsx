@@ -17,7 +17,7 @@ import { useAppStore } from '../stores/useAppStore'
 const PAY_STAGES = [
   { progress: 18, line: '正在校验快乐余额……' },
   { progress: 46, line: '正在联系平行宇宙仓库……' },
-  { progress: 78, line: '正在假装扣款……' },
+  { progress: 78, line: '正在确认虚拟支付……' },
   { progress: 100, line: '正在生成永不送达面单……' },
 ]
 
@@ -108,7 +108,7 @@ export function CheckoutPage() {
 
   return (
     <AppShell showNav={false}>
-      <TopBar title="假结算" showBack />
+      <TopBar title="结算" showBack />
       <div className="space-y-4 px-4 py-4 pb-28">
         <div className="rounded-2xl border border-line bg-white p-4">
           <h2 className="mb-3 text-sm font-semibold">订单摘要</h2>
@@ -159,7 +159,7 @@ export function CheckoutPage() {
         </div>
 
         <div className="rounded-2xl border border-line bg-white p-4">
-          <h2 className="mb-3 text-sm font-semibold">支付方式（假的）</h2>
+          <h2 className="mb-3 text-sm font-semibold">支付方式</h2>
           <div className="space-y-2">
             {FAKE_PAY_METHODS.map((m) => (
               <label

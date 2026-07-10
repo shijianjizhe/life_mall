@@ -459,7 +459,7 @@ export function RoomPage() {
             <EmptyState
               emoji="📦"
               title="还没有可摆放的商品"
-              description="先完成一笔假订单，再回来布置你的虚拟房间"
+              description="先完成一笔订单，再回来布置你的虚拟房间"
             />
           )}
         </section>

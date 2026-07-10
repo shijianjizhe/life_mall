@@ -62,7 +62,7 @@ export const FAKE_ADDRESSES = [
 ]
 
 export const FAKE_PAY_METHODS = [
-  { id: 'huabei', label: '💰 花呗（假的）' },
+  { id: 'huabei', label: '💰 花呗' },
   { id: 'silver', label: '🪙 碎银子' },
   { id: 'youth', label: '🌸 青春' },
   { id: 'nextlife', label: '😅 下辈子还' },
@@ -70,7 +70,7 @@ export const FAKE_PAY_METHODS = [
 
 export const CHECKOUT_LOADING_LINES = [
   '正在联系永远不会来的快递员……',
-  '正在假装扣款……',
+  '正在确认虚拟支付……',
   '正在生成“预计永不送达”面单……',
   '正在把快乐装进购物车……',
   '正在通知平行宇宙仓库……',

@@ -1,14 +1,9 @@
 export function formatPrice(n: number): string {
   if (!Number.isFinite(n)) return '¥0'
-  if (n >= 10000) {
-    const wan = n / 10000
-    if (wan >= 100) return `¥${Math.round(wan)}万`
-    return `¥${wan % 1 === 0 ? wan.toFixed(0) : wan.toFixed(1)}万`
-  }
   if (Number.isInteger(n)) {
-    return `¥${n.toLocaleString('zh-CN')}`
+    return `¥${n}`
   }
-  return `¥${n.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  return `¥${n.toFixed(2)}`
 }
 
 export function formatDateTime(iso: string): string {

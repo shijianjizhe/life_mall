@@ -38,7 +38,7 @@ export function localChatReply(userText: string, productName?: string): string {
     return '物流政策：永不发货，永久提供情绪价值。签收方式：会心一笑。'
   }
   if (text.includes('砍') || text.includes('便宜')) {
-    return '已为您砍掉 100% 的真实付款压力，实付：0 元（假的也砍不动更低了）。'
+    return '已为您砍掉 100% 的真实付款压力，实付：0 元（已经不能更低了）。'
   }
   if (text.includes('安慰') || text.includes('难过') || text.includes('emo')) {
     return '抱抱你。想买就加购，想哭就下单——反正不会扣款，你值得这点快乐。'
@@ -154,7 +154,7 @@ export function buildPersonalityReport(input: {
   ]
   const title = pickRandom(titles)
   const content = [
-    `你累计「假下单」${input.totalOrders} 次，虚拟花掉 ${Math.round(input.totalSpent).toLocaleString('zh-CN')} 元——钱包安全，心灵富裕。`,
+    `你累计「下单」${input.totalOrders} 次，虚拟花掉 ${Math.round(input.totalSpent).toLocaleString('zh-CN')} 元——钱包安全，心灵富裕。`,
     `你最常流连的分区是「${input.topCategoryName}」，说明你很清楚自己缺的不是东西，是一点被允许幻想的自由。`,
     `收藏 ${input.favoriteCount} 件，购物车常驻 ${input.cartCount} 件：你不是冲动，你是持续地、温柔地想要。`,
     `建议：继续逛。反正不会到货，但足够快乐。`,

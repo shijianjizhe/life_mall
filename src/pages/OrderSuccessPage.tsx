@@ -162,7 +162,7 @@ export function OrderSuccessPage() {
             虚拟购物 · 不发货 · 不收款 · 数据仅存本地
           </p>
           <p className="text-center text-[11px] text-white/60">
-            当前共 {orders.length} 笔假订单
+            当前共 {orders.length} 笔订单
           </p>
         </div>
       </div>

@@ -141,7 +141,7 @@ export function AiReportPage() {
           <div className="mt-5 grid grid-cols-2 gap-3 text-center text-xs">
             {[
               ['偏爱分区', stats.topCategoryName],
-              ['假下单', `${stats.totalOrders} 次`],
+              ['下单', `${stats.totalOrders} 次`],
               ['虚拟消费', formatPrice(stats.totalSpent)],
               ['购物车常驻', `${stats.cartCount} 件`],
               ['收藏心动', `${stats.favoriteCount} 件`],

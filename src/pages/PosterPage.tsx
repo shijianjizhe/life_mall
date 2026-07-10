@@ -182,7 +182,7 @@ export function PosterPage() {
               {template === 'favorite' && '我的心动收藏'}
               {template === 'annual' && (report?.title ?? '我的年度精神账单')}
               {template === 'dream' && '我的梦想清单'}
-              {template === 'order' && '我的假订单战绩'}
+              {template === 'order' && '我的订单战绩'}
             </h1>
             <p className="mt-2 text-sm opacity-85">
               永远不会到货，但足够快乐
@@ -203,7 +203,7 @@ export function PosterPage() {
               ) : null}
               {template === 'annual' ? (
                 <>
-                  <PosterStat label="假下单" value={`${orders.length} 次`} />
+                  <PosterStat label="下单" value={`${orders.length} 次`} />
                   <PosterStat label="虚拟消费" value={formatPrice(orderTotal)} />
                 </>
               ) : null}
@@ -288,7 +288,7 @@ export function PosterPage() {
                     {template === 'favorite' && '心动收藏还没开始发光'}
                     {template === 'annual' && '年度账单正在攒素材'}
                     {template === 'dream' && '梦想清单还留着第一颗星'}
-                    {template === 'order' && '假订单战绩尚未解锁'}
+                    {template === 'order' && '订单战绩尚未解锁'}
                   </p>
                   <p className="mt-1 text-xs opacity-75">先保存这张空状态，也很有纪念意义。</p>
                 </div>
