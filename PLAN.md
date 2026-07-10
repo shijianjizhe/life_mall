@@ -21,7 +21,7 @@
 | React Router | 20 条路由（含懒加载） |
 | Dexie.js | `LifeMallDB` 12 个 store + schema v1 |
 | Zustand | cart / user / settings 等全局状态 |
-| 种子数据 | 4 分类 × 15–20 商品（约 60–80 SKU）+ 文案池 |
+| 种子数据 | 4 分类 × 34 商品（共 136 SKU）+ 文案池 |
 | 设计系统组件 | Button、Card、BottomNav、AppShell、Toast、Empty |
 
 **完成标准**：`npm run dev` 可启动；DB 初始化；空壳页面可跳转。
@@ -82,7 +82,7 @@
 
 ### 完成状态（2026-07-09）
 
-- P0 商品图片体系：已完成。68 个商品均有 `mainImageUrl` 和 2 张详情图，JPG 资源位于 `public/products/`，并通过 `ProductVisual` 在列表、详情、购物车、订单、房间、海报和专题中复用。
+- P0 商品图片体系：已完成。136 个商品均有 `mainImageUrl` 和 2 张详情图，JPG 资源位于 `public/products/`，并通过 `ProductVisual` 在列表、详情、购物车、订单、房间、海报和专题中复用。
 - P0 加购飞入动效与震动：已完成。商品卡和详情页加购会触发缩略图飞入购物车、购物车角标定位和 `safeVibrate` 轻触感反馈。
 - P1 虚拟房间交互：已完成。保留拖拽、滚轮/按钮缩放，新增双指缩放、中心/物品对齐磁吸辅助线和触感反馈。
 - P1 AI 报告四屏：已完成。报告页拆成封面、标题揭晓、数据支撑、人格点评四屏。
@@ -103,7 +103,7 @@
 
 **实施步骤**：
 1. 定义商品图片资产策略：优先使用 `public/products/` 本地静态图片，避免把图片 Base64 写入 IndexedDB。
-2. 为 68 个种子商品补齐 `mainImageUrl`，重点商品补 2-3 张 `galleryImages`。
+2. 为 136 个种子商品补齐 `mainImageUrl`，重点商品补 2-3 张 `galleryImages`。
 3. 升级 `ProductEmojiArt` 为通用 `ProductVisual`：有图片时展示图片，图片缺失时保留 emoji fallback。
 4. 替换首页推荐、分类商品卡、购物车、订单、收藏、房间、海报、100 万专题中的商品视觉组件。
 5. 检查图片尺寸、裁切、懒加载和 `alt` 文案，避免移动端卡片抖动。
